@@ -45,15 +45,15 @@ byte moc1, moc2, moc3, moc4, moc5;
 int id, cmd;
 
 // ULN2003 Motor Driver Pins
-#define MT1_IN1 19
-#define MT1_IN2 18
-#define MT1_IN3 5
-#define MT1_IN4 17
+#define MT1_IN1 13
+#define MT1_IN2 12
+#define MT1_IN3 14
+#define MT1_IN4 27
 
-#define MT2_IN1 19
-#define MT2_IN2 18
-#define MT2_IN3 5
-#define MT2_IN4 17
+#define MT2_IN1 26
+#define MT2_IN2 25
+#define MT2_IN3 33
+#define MT2_IN4 32
 
 const int stepsPerRevolution = 2048;  // change this to fit the number of steps per revolution
 // initialize the stepper library
