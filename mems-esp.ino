@@ -1,7 +1,27 @@
 #include <Arduino.h>
+#include <Stepper.h>
 #include "ad5940.h"
 #include "RampTest.h"
 #include "Impedance.h"
+
+#define HAVE_VOLTAGE_CONTROL 
+
+#ifdef HAVE_VOLTAGE_CONTROL
+#define VOLTAGE_NONE    0
+#define VOLTAGE_1       1
+#define VOLTAGE_2       2
+
+#define CMD_EXTRA_NONE  0
+#define CMD_EXTRA_SUB   1
+#define CMD_SUB         2
+#define CMD_ADD         3
+#define CMD_EXTRA_ADD   4
+#endif
+
+int readPin1 = 0;
+int readPin2 = 0;
+int readVal1 = 0;
+int readVal2 = 0;
 
 unsigned long timeStart = 0;
 unsigned long timeNow = 0;
@@ -18,6 +38,28 @@ int countRepeat, StepNumber = 0, RepeatTimes = 0;
 BoolFlag logEn = bFALSE;
 String inputString = "";
 byte moc1, moc2, moc3, moc4, moc5;
+
+
+#ifdef HAVE_VOLTAGE_CONTROL 
+/* for voltage control */
+int id, cmd;
+
+// ULN2003 Motor Driver Pins
+#define MT1_IN1 19
+#define MT1_IN2 18
+#define MT1_IN3 5
+#define MT1_IN4 17
+
+#define MT2_IN1 19
+#define MT2_IN2 18
+#define MT2_IN3 5
+#define MT2_IN4 17
+
+const int stepsPerRevolution = 2048;  // change this to fit the number of steps per revolution
+// initialize the stepper library
+Stepper myStepper1 = Stepper(stepsPerRevolution, MT1_IN1, MT1_IN2, MT1_IN3, MT1_IN4);//gan chan dieu khien dong co buoc 1
+Stepper myStepper2 = Stepper(stepsPerRevolution, MT2_IN1, MT2_IN2, MT2_IN3, MT2_IN4);//gan chan dieu khien dong co buoc 2
+#endif
 
 static int32_t RampShowResult(float *pData, uint32_t DataCount)
 {
@@ -311,6 +353,56 @@ void AD5940_EIS_Main(void)
   }
 }
 
+#ifdef HAVE_VOLTAGE_CONTROL 
+int Control_Voltage(int id, int cmd) {
+  if (id == 1 ){
+    switch (cmd){
+      case 1:
+        myStepper1.step(-32*10);
+        break;
+      case 2: 
+        myStepper1.step(-16*10);
+        break;
+      case 3:
+        myStepper1.step(16*10);
+        break;
+      case 4: 
+        myStepper1.step(32*10);
+        break;
+    }
+  }
+  else if ( id == 2 ){
+    switch (cmd){
+      case 1:
+        myStepper2.step(-32*10);
+        break;
+      case 2: 
+        myStepper2.step(-16*10);
+        break;
+      case 3:
+        myStepper2.step(16*10);
+        break;
+      case 4: 
+        myStepper2.step(32*10);
+        break;
+    }
+  }
+  return 0;
+}
+#endif
+
+void sendVoltage(){
+  int voltage1, voltage2;
+  readVal1 = analogRead(readPin1);
+  voltage1 = (5./1023.) * readVal1 * 22;
+  readVal2 = analogRead(readPin2);
+  voltage2 = (5./1023.) * readVal2 * 22;
+
+    // đọc analoge, gán vào voltage1, voltage2
+    Serial.print(voltage1 + ";" + voltage2);
+
+}
+
 /*******************************************************************************
  * Write code arduino in here
  ******************************************************************************/
@@ -322,6 +414,13 @@ void setup() {
   if(checkInitMCU == 0)
   {
   }
+
+#ifdef HAVE_VOLTAGE_CONTROL
+  // set the speed at 15 rpm
+  myStepper1.setSpeed(15);
+  myStepper2.setSpeed(15);
+#endif
+
 }
 
 void loop() {
@@ -342,22 +441,39 @@ void loop() {
         if(inputString[i] == '|') {moc4 = i;}
         if(inputString[i] == '$') {moc5 = i;}
       }
-      S_Vol = inputString.substring((moc1 + 1), moc2).toDouble() * 1.0;
-      E_Vol = inputString.substring((moc2 + 1), moc3).toInt() * 1.0;
-      StepNumber = inputString.substring((moc3 + 1), moc4).toInt();
-      RepeatTimes = inputString.substring((moc4 + 1), moc5).toInt();
-      logEn = (inputString.substring(moc5 + 1).toInt() == 1) ? bTRUE : bFALSE;
+      if(inputString[0] == '1' || inputString[0] == '2'){
+        S_Vol = inputString.substring((moc1 + 1), moc2).toDouble() * 1.0;
+        E_Vol = inputString.substring((moc2 + 1), moc3).toInt() * 1.0;
+        StepNumber = inputString.substring((moc3 + 1), moc4).toInt();
+        RepeatTimes = inputString.substring((moc4 + 1), moc5).toInt();
+        logEn = (inputString.substring(moc5 + 1).toInt() == 1) ? bTRUE : bFALSE;
+        id = 0;
+        cmd = 0;
+      }
+#ifdef HAVE_VOLTAGE_CONTROL 
+      else if(inputString[0] == '3') {
+        id  = inputString.substring((moc1 + 1), moc2).toInt() * 1.0;
+        cmd = inputString.substring((moc2 + 1), moc3).toInt() * 1.0;
+      }
+#endif
       
       if (inputString[0] == '1')
       {
         AD5940_CV_Main();
+        ESP.restart();
       }
       else if (inputString[0] = '2')
       {
         AD5940_EIS_Main();
+        ESP.restart();
       }
+#ifdef HAVE_VOLTAGE_CONTROL
+      else if (inputString[0] = '3')
+      {
+        Control_Voltage(id, cmd);
+      }
+#endif
       inputString = "";
-      ESP.restart();
     }
   }
 }
