@@ -18,11 +18,6 @@
 #define CMD_EXTRA_ADD   4
 #endif
 
-int readPin1 = 0;
-int readPin2 = 0;
-int readVal1 = 0;
-int readVal2 = 0;
-
 unsigned long timeStart = 0;
 unsigned long timeNow = 0;
 
@@ -55,10 +50,15 @@ int id, cmd;
 #define MT2_IN3 33
 #define MT2_IN4 32
 
+#define ADC_VOLTAGE_1 34
+#define ADC_VOLTAGE_2 35
 const int stepsPerRevolution = 2048;  // change this to fit the number of steps per revolution
 // initialize the stepper library
 Stepper myStepper1 = Stepper(stepsPerRevolution, MT1_IN1, MT1_IN2, MT1_IN3, MT1_IN4);//gan chan dieu khien dong co buoc 1
 Stepper myStepper2 = Stepper(stepsPerRevolution, MT2_IN1, MT2_IN2, MT2_IN3, MT2_IN4);//gan chan dieu khien dong co buoc 2
+hw_timer_t* timer = NULL; //khơi tạo timer
+portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED; 
+uint8_t enable_send_volgate = 1;
 #endif
 
 static int32_t RampShowResult(float *pData, uint32_t DataCount)
@@ -392,15 +392,21 @@ int Control_Voltage(int id, int cmd) {
 #endif
 
 void sendVoltage(){
-  int voltage1, voltage2;
-  readVal1 = analogRead(readPin1);
+  float voltage1, voltage2;
+  float readVal1 = analogRead(ADC_VOLTAGE_1);
   voltage1 = (5./1023.) * readVal1 * 22;
-  readVal2 = analogRead(readPin2);
+  float readVal2 = analogRead(ADC_VOLTAGE_1);
   voltage2 = (5./1023.) * readVal2 * 22;
+  if(enable_send_volgate == 1)
+    Serial.println(String(voltage1) + ";" + String(voltage2));
 
-    // đọc analoge, gán vào voltage1, voltage2
-    Serial.print(voltage1 + ";" + voltage2);
+}
 
+// hàm xử lý ngắt
+void IRAM_ATTR onTimer() {   
+  portENTER_CRITICAL_ISR(&timerMux); //vào chế độ tránh xung đột
+  sendVoltage();
+  portEXIT_CRITICAL_ISR(&timerMux); // thoát 
 }
 
 /*******************************************************************************
@@ -419,6 +425,15 @@ void setup() {
   // set the speed at 15 rpm
   myStepper1.setSpeed(15);
   myStepper2.setSpeed(15);
+
+  //khoi tạo timer với chu kì 1us vì thạch anh của ESP chạy 8MHz
+  timer = timerBegin(0, 80, true);
+  //khởi tạo hàm xử lý ngắt ngắt cho Timer
+  timerAttachInterrupt(timer, &onTimer, true);
+  //khởi tạo thời gian ngắt cho timer là 1s (1000000 us)
+  timerAlarmWrite(timer, 1000000, true);
+  //bắt đầu chạy timer
+  timerAlarmEnable(timer);
 #endif
 
 }
@@ -459,17 +474,20 @@ void loop() {
       
       if (inputString[0] == '1')
       {
+        enable_send_volgate = 0;
         AD5940_CV_Main();
         ESP.restart();
       }
       else if (inputString[0] = '2')
       {
+        enable_send_volgate = 0;
         AD5940_EIS_Main();
         ESP.restart();
       }
 #ifdef HAVE_VOLTAGE_CONTROL
       else if (inputString[0] = '3')
       {
+        enable_send_volgate = 1;
         Control_Voltage(id, cmd);
       }
 #endif
