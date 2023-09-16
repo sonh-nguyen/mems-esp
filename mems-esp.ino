@@ -37,7 +37,7 @@ byte moc1, moc2, moc3, moc4, moc5;
 
 #ifdef HAVE_VOLTAGE_CONTROL 
 /* for voltage control */
-int id, cmd;
+float vol1, vol2;
 
 // ULN2003 Motor Driver Pins
 #define MT1_IN1 13
@@ -354,49 +354,17 @@ void AD5940_EIS_Main(void)
 }
 
 #ifdef HAVE_VOLTAGE_CONTROL 
-int Control_Voltage(int id, int cmd) {
-  if (id == 1 ){
-    switch (cmd){
-      case 1:
-        myStepper1.step(-32*10);
-        break;
-      case 2: 
-        myStepper1.step(-16*10);
-        break;
-      case 3:
-        myStepper1.step(16*10);
-        break;
-      case 4: 
-        myStepper1.step(32*10);
-        break;
-    }
-  }
-  else if ( id == 2 ){
-    switch (cmd){
-      case 1:
-        myStepper2.step(-32*10);
-        break;
-      case 2: 
-        myStepper2.step(-16*10);
-        break;
-      case 3:
-        myStepper2.step(16*10);
-        break;
-      case 4: 
-        myStepper2.step(32*10);
-        break;
-    }
-  }
+int VoltageCtrl_Main(float voltage1, float voltage2) {
+  /*TODO control otate the stepper motor to achieve the desired voltage*/
+
   return 0;
 }
 #endif
 
 void sendVoltage(){
-  float voltage1, voltage2;
-  float readVal1 = analogRead(ADC_VOLTAGE_1);
-  voltage1 = (5./1023.) * readVal1 * 22;
-  float readVal2 = analogRead(ADC_VOLTAGE_1);
-  voltage2 = (5./1023.) * readVal2 * 22;
+  float voltage1 = 0, voltage2 = 0;
+
+  /*TODO read voltage of electrodes and send to GUI*/
   if(enable_send_volgate == 1)
     Serial.println(String(voltage1) + ";" + String(voltage2));
 
@@ -462,13 +430,11 @@ void loop() {
         StepNumber = inputString.substring((moc3 + 1), moc4).toInt();
         RepeatTimes = inputString.substring((moc4 + 1), moc5).toInt();
         logEn = (inputString.substring(moc5 + 1).toInt() == 1) ? bTRUE : bFALSE;
-        id = 0;
-        cmd = 0;
       }
 #ifdef HAVE_VOLTAGE_CONTROL 
       else if(inputString[0] == '3') {
-        id  = inputString.substring((moc1 + 1), moc2).toInt() * 1.0;
-        cmd = inputString.substring((moc2 + 1), moc3).toInt() * 1.0;
+        vol1  = inputString.substring((moc1 + 1), moc2).toDouble() * 1.0;
+        vol2 = inputString.substring((moc2 + 1), moc3).toDouble() * 1.0;
       }
 #endif
       
@@ -488,7 +454,7 @@ void loop() {
       else if (inputString[0] = '3')
       {
         enable_send_volgate = 1;
-        Control_Voltage(id, cmd);
+        VoltageCtrl_Main(vol1, vol2);
       }
 #endif
       inputString = "";
