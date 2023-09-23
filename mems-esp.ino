@@ -156,6 +156,7 @@ static int32_t AD5940CVPlatformCfg(void)
   LfoscMeasure.CalSeqAddr = 0;        /* Put sequence commands from start address of SRAM */
   LfoscMeasure.SystemClkFreq = 16000000.0f; /* 16MHz in this firmware. */
   AD5940_LFOSCMeasure(&LfoscMeasure, &LFOSCFreq);
+  printf("LFOSC Freq:%f\n", LFOSCFreq);
   AD5940_SleepKeyCtrlS(SLPKEY_UNLOCK);         /*  */
   return 0;
 }
@@ -291,6 +292,7 @@ void AD5940_CV_Main()
       RampShowResult((float*)AppCVBuff, temp);
       
       count += temp;
+      printf("%d", count);  //sonnh fix UI can not get the result
     }
     /* Repeat Measurement continuously*/
     if(pRampCfg->bTestFinished ==bTRUE)
