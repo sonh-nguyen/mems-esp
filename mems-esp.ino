@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <Stepper.h>
+#include <AccelStepper.h>
 #include "ad5940.h"
 #include "RampTest.h"
 #include "Impedance.h"
@@ -37,29 +37,38 @@ byte moc1, moc2, moc3, moc4, moc5;
 
 
 #ifdef HAVE_VOLTAGE_CONTROL 
+#define HALFSTEP 8
 /* for voltage control */
 float vol1, vol2;
+float voltage1; //gia tri Voltage tra ve cho stepper1
+float voltage2; //gia tri Voltage nhap vao cho stepper1
+float voltage3; //gia tri Voltage tra ve cho stepper2
+float voltage4; //gia tri Voltage nhap vao cho stepper2
 
 // ULN2003 Motor Driver Pins
-#define MT1_IN1 13
-#define MT1_IN2 12
-#define MT1_IN3 14
-#define MT1_IN4 27
+#define motorPin1  13     // IN1 on the ULN2003 driver 1
+#define motorPin2  12     // IN2 on the ULN2003 driver 1
+#define motorPin3  14     // IN3 on the ULN2003 driver 1
+#define motorPin4  27     // IN4 on the ULN2003 driver 1
 
-#define MT2_IN1 26
-#define MT2_IN2 25
-#define MT2_IN3 33
-#define MT2_IN4 32
+#define motorPin5  26    // IN1 on the ULN2003 driver 2
+#define motorPin6  25    // IN2 on the ULN2003 driver 2
+#define motorPin7  33   // IN3 on the ULN2003 driver 2
+#define motorPin8  32   // IN4 on the ULN2003 driver 2
 
 #define ADC_VOLTAGE_1 34
 #define ADC_VOLTAGE_2 35
-const int stepsPerRevolution = 2048;  // change this to fit the number of steps per revolution
-#define SCALE_VOL  10                 // Presure Divider Vol
+
+const float stepsPerRevolution = 4096;  // change this to fit the number of steps per revolution
+float StepsPerVol = 37.4064  ; // so buoc tren 1 Vol
+int stepperSpeed = 200; //speed of the stepper (steps per second)
+
 // initialize the ads library
 Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
 // initialize the stepper library
-Stepper myStepper1 = Stepper(stepsPerRevolution, MT1_IN1, MT1_IN2, MT1_IN3, MT1_IN4);//gan chan dieu khien dong co buoc 1
-Stepper myStepper2 = Stepper(stepsPerRevolution, MT2_IN1, MT2_IN2, MT2_IN3, MT2_IN4);//gan chan dieu khien dong co buoc 2
+AccelStepper stepper1(HALFSTEP, motorPin1, motorPin3, motorPin2, motorPin4);
+AccelStepper stepper2(HALFSTEP, motorPin5, motorPin7, motorPin6, motorPin8);
+
 hw_timer_t* timer = NULL; //khơi tạo timer
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED; 
 uint8_t enable_send_volgate = 1;
@@ -360,20 +369,32 @@ void AD5940_EIS_Main(void)
 }
 
 #ifdef HAVE_VOLTAGE_CONTROL 
-int VoltageCtrl_Main(float voltage1, float voltage2) {
+float volToSteps1(float voltage1,float voltage2){
+  float a;
+  a = (voltage2 - voltage1*18)*StepsPerVol;
+  return a; 
+}
+float volToSteps2(float voltage3,float voltage4){
+  float b;
+  b = (voltage4 - voltage3*18)*StepsPerVol;
+  return b; 
+}
+VoltageCtrl_Main() {
   /*TODO control otate the stepper motor to achieve the desired voltage*/
-
-  return 0;
+  stepper1.moveTo(volToSteps1(voltage1, voltage2));
+  stepper1.run();
+  stepper2.moveTo(volToSteps2(voltage3,voltage4));
+  stepper2.run();
 }
 #endif
 
 void sendVoltage(){
-  float voltage1 = 0, voltage2 = 0;
+  float voltage1 = 0, voltage3 = 0;
   int16_t adc0, adc1;
   adc0 = ads.readADC_SingleEnded(0);    
   adc1 = ads.readADC_SingleEnded(1);
   voltage1 = ads.computeVolts(adc0) * 2;  // Nhân với 1 hàm tuyến tính (chưa có công thúc), Tại đây không dùng map vì map trả về kiểu Int (Tự làm tròn)
-  voltage2 = ads.computeVolts(adc1) * 2;
+  voltage3 = ads.computeVolts(adc1) * 2;
 
   /*TODO read voltage of electrodes and send to GUI*/
   if(enable_send_volgate == 1)
@@ -407,8 +428,15 @@ void setup() {
 
 #ifdef HAVE_VOLTAGE_CONTROL
   // set the speed at 15 rpm
-  myStepper1.setSpeed(15);
-  myStepper2.setSpeed(15);
+  stepper1.setMaxSpeed(1000.0); // toc do max cua dong co
+  stepper1.setAcceleration(100.0);// gia toc
+  stepper1.setSpeed(stepperSpeed);// toc do hien tai
+  stepper1.setCurrentPosition(0);
+  
+  stepper2.setMaxSpeed(1000.0); // toc do max cua dong co
+  stepper2.setAcceleration(100.0);// gia toc
+  stepper2.setSpeed(stepperSpeed);// toc do hien tai
+  stepper2.setCurrentPosition(0);
 
   //khoi tạo timer với chu kì 1us vì thạch anh của ESP chạy 8MHz
   timer = timerBegin(0, 80, true);
@@ -449,8 +477,8 @@ void loop() {
       }
 #ifdef HAVE_VOLTAGE_CONTROL 
       else if(inputString[0] == '3') {
-        vol1  = inputString.substring((moc1 + 1), moc2).toDouble() * 1.0;
-        vol2 = inputString.substring((moc2 + 1), moc3).toDouble() * 1.0;
+        voltage1  = inputString.substring((moc1 + 1), moc2).toDouble() * 1.0;
+        voltage3 = inputString.substring((moc2 + 1), moc3).toDouble() * 1.0;
       }
 #endif
       
@@ -470,7 +498,7 @@ void loop() {
       else if (inputString[0] = '3')
       {
         enable_send_volgate = 1;
-        VoltageCtrl_Main(vol1, vol2);
+        VoltageCtrl_Main();
       }
 #endif
       inputString = "";
