@@ -3,6 +3,7 @@
 #include "ad5940.h"
 #include "RampTest.h"
 #include "Impedance.h"
+#include <Adafruit_ADS1X15.h>
 
 #define HAVE_VOLTAGE_CONTROL 
 
@@ -53,6 +54,9 @@ float vol1, vol2;
 #define ADC_VOLTAGE_1 34
 #define ADC_VOLTAGE_2 35
 const int stepsPerRevolution = 2048;  // change this to fit the number of steps per revolution
+#define SCALE_VOL  10                 // Presure Divider Vol
+// initialize the ads library
+Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
 // initialize the stepper library
 Stepper myStepper1 = Stepper(stepsPerRevolution, MT1_IN1, MT1_IN2, MT1_IN3, MT1_IN4);//gan chan dieu khien dong co buoc 1
 Stepper myStepper2 = Stepper(stepsPerRevolution, MT2_IN1, MT2_IN2, MT2_IN3, MT2_IN4);//gan chan dieu khien dong co buoc 2
@@ -365,6 +369,11 @@ int VoltageCtrl_Main(float voltage1, float voltage2) {
 
 void sendVoltage(){
   float voltage1 = 0, voltage2 = 0;
+  int16_t adc0, adc1;
+  adc0 = ads.readADC_SingleEnded(0);    
+  adc1 = ads.readADC_SingleEnded(1);
+  voltage1 = ads.computeVolts(adc0) * 2;  // Nhân với 1 hàm tuyến tính (chưa có công thúc), Tại đây không dùng map vì map trả về kiểu Int (Tự làm tròn)
+  voltage2 = ads.computeVolts(adc1) * 2;
 
   /*TODO read voltage of electrodes and send to GUI*/
   if(enable_send_volgate == 1)
@@ -385,6 +394,11 @@ void IRAM_ATTR onTimer() {
 void setup() {
   Serial.begin(115200);
   inputString.reserve(200);
+  if (!ads.begin(0x48))
+  {
+    Serial.println("!ADS_Failed");    
+    while (1);
+  }
 
   uint32_t checkInitMCU = AD5940_MCUResourceInit(0);
   if(checkInitMCU == 0)
