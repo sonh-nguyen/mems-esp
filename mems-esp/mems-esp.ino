@@ -379,7 +379,7 @@ float volToSteps2(float voltage3,float voltage4){
   b = (voltage4 - voltage3*18)*StepsPerVol;
   return b; 
 }
-VoltageCtrl_Main() {
+void VoltageCtrl_Main() {
   /*TODO control otate the stepper motor to achieve the desired voltage*/
   stepper1.moveTo(volToSteps1(voltage1, voltage2));
   stepper1.run();
@@ -393,12 +393,12 @@ void sendVoltage(){
   int16_t adc0, adc1;
   adc0 = ads.readADC_SingleEnded(0);    
   adc1 = ads.readADC_SingleEnded(1);
-  voltage1 = ads.computeVolts(adc0) * 2;  // Nhân với 1 hàm tuyến tính (chưa có công thúc), Tại đây không dùng map vì map trả về kiểu Int (Tự làm tròn)
-  voltage3 = ads.computeVolts(adc1) * 2;
+  voltage1 = ads.computeVolts(adc0) * 18;  // Nhân với 1 hàm tuyến tính (chưa có công thúc), Tại đây không dùng map vì map trả về kiểu Int (Tự làm tròn)
+  voltage3 = ads.computeVolts(adc1) * 18;
 
   /*TODO read voltage of electrodes and send to GUI*/
   if(enable_send_volgate == 1)
-    Serial.println(String(voltage1) + ";" + String(voltage2));
+    Serial.println(String(voltage1) + ";" + String(voltage3));
 
 }
 
