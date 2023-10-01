@@ -40,10 +40,10 @@ byte moc1, moc2, moc3, moc4, moc5;
 #define HALFSTEP 8
 /* for voltage control */
 float vol1, vol2;
-float voltage1; //gia tri Voltage tra ve cho stepper1
-float voltage2; //gia tri Voltage nhap vao cho stepper1
-float voltage3; //gia tri Voltage tra ve cho stepper2
-float voltage4; //gia tri Voltage nhap vao cho stepper2
+float targetVoltage1; //gia tri Voltage tra ve cho stepper1
+float curentVoltage1; //gia tri Voltage nhap vao cho stepper1
+float targetVoltage2; //gia tri Voltage tra ve cho stepper2
+float curentVoltage2; //gia tri Voltage nhap vao cho stepper2
 
 // ULN2003 Motor Driver Pins
 #define motorPin1  13     // IN1 on the ULN2003 driver 1
@@ -381,24 +381,24 @@ float volToSteps2(float voltage3,float voltage4){
 }
 void VoltageCtrl_Main() {
   /*TODO control otate the stepper motor to achieve the desired voltage*/
-  stepper1.moveTo(volToSteps1(voltage1, voltage2));
+  stepper1.moveTo(volToSteps1(targetVoltage1, curentVoltage1));
   stepper1.run();
-  stepper2.moveTo(volToSteps2(voltage3,voltage4));
+  stepper2.moveTo(volToSteps2(targetVoltage2,curentVoltage2));
   stepper2.run();
 }
 #endif
 
 void sendVoltage(){
-  float voltage1 = 0, voltage3 = 0;
+
   int16_t adc0, adc1;
   adc0 = ads.readADC_SingleEnded(0);    
   adc1 = ads.readADC_SingleEnded(1);
-  voltage1 = ads.computeVolts(adc0) * 18;  // Nhân với 1 hàm tuyến tính (chưa có công thúc), Tại đây không dùng map vì map trả về kiểu Int (Tự làm tròn)
-  voltage3 = ads.computeVolts(adc1) * 18;
+  curentVoltage1 = ads.computeVolts(adc0) * 18;  // Nhân với 1 hàm tuyến tính (chưa có công thúc), Tại đây không dùng map vì map trả về kiểu Int (Tự làm tròn)
+  curentVoltage2 = ads.computeVolts(adc1) * 18;
 
   /*TODO read voltage of electrodes and send to GUI*/
   if(enable_send_volgate == 1)
-    Serial.println(String(voltage1) + ";" + String(voltage3));
+    Serial.println(String(curentVoltage1) + ";" + String(curentVoltage2));
 
 }
 
@@ -477,8 +477,8 @@ void loop() {
       }
 #ifdef HAVE_VOLTAGE_CONTROL 
       else if(inputString[0] == '3') {
-        voltage1  = inputString.substring((moc1 + 1), moc2).toDouble() * 1.0;
-        voltage3 = inputString.substring((moc2 + 1), moc3).toDouble() * 1.0;
+        targetVoltage1  = inputString.substring((moc1 + 1), moc2).toDouble() * 1.0;
+        targetVoltage2 = inputString.substring((moc2 + 1), moc3).toDouble() * 1.0;
       }
 #endif
       
