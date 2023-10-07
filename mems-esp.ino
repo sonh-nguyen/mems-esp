@@ -17,6 +17,9 @@
 #define CMD_SUB         2
 #define CMD_ADD         3
 #define CMD_EXTRA_ADD   4
+
+#define VALID_VOLTAGE_ERROR 4 /*V*/
+#define MAX_ATTEMP 5
 #endif
 
 unsigned long timeStart = 0;
@@ -380,32 +383,56 @@ float volToSteps2(float voltage3,float voltage4){
   return b; 
 }
 void VoltageCtrl_Main() {
-  /*TODO control otate the stepper motor to achieve the desired voltage*/
-  stepper1.moveTo(volToSteps1(targetVoltage1, curentVoltage1));
-  stepper1.run();
-  stepper2.moveTo(volToSteps2(targetVoltage2,curentVoltage2));
-  stepper2.run();
+  float voltage1Error;
+  float voltage2Error;
+  int attempCount = 0;
+  int isSuccess = 0;
+
+  const float targetVoltage1_l = targetVoltage1;
+  const float targetVoltage2_l = targetVoltage2;
+  readVoltage();
+  voltage1Error = fabs(targetVoltage1_l - curentVoltage1);
+  voltage2Error = fabs(targetVoltage2_l - curentVoltage2);
+  
+  do {
+    if (voltage1Error > VALID_VOLTAGE_ERROR) {
+      stepper1.moveTo(volToSteps1(targetVoltage1_l, curentVoltage1));
+      stepper1.run();
+    }
+
+    if (voltage2Error > VALID_VOLTAGE_ERROR) {
+      stepper2.moveTo(volToSteps2(targetVoltage2_l,curentVoltage2));
+      stepper2.run();
+    }
+    attempCount++;
+    delay(200);
+
+    /*read voltage values after rotate steppers */
+    readVoltage();
+    voltage1Error = fabs(targetVoltage1_l - curentVoltage1);
+    voltage2Error = fabs(targetVoltage2_l - curentVoltage2);
+    if (voltage1Error < VALID_VOLTAGE_ERROR && voltage2Error < VALID_VOLTAGE_ERROR) 
+      isSuccess = 1;
+    /*send result to UI*/
+    Serial.println("0;" + String(attempCount) + ";" + String(MAX_ATTEMP) + ";"  + String(isSuccess) + ";" + String(curentVoltage1) + ";" + String(curentVoltage2));
+  }
+  while((voltage1Error > VALID_VOLTAGE_ERROR || voltage2Error > VALID_VOLTAGE_ERROR) && attempCount < MAX_ATTEMP);
 }
 #endif
 
-void sendVoltage(){
+void readVoltage(){
 
   int16_t adc0, adc1;
   adc0 = ads.readADC_SingleEnded(0);    
   adc1 = ads.readADC_SingleEnded(1);
   curentVoltage1 = ads.computeVolts(adc0) * 18;  // Nhân với 1 hàm tuyến tính (chưa có công thúc), Tại đây không dùng map vì map trả về kiểu Int (Tự làm tròn)
   curentVoltage2 = ads.computeVolts(adc1) * 18;
-
-  /*TODO read voltage of electrodes and send to GUI*/
-  if(enable_send_volgate == 1)
-    Serial.println(String(curentVoltage1) + ";" + String(curentVoltage2));
-
 }
 
 // hàm xử lý ngắt
 void IRAM_ATTR onTimer() {   
   portENTER_CRITICAL_ISR(&timerMux); //vào chế độ tránh xung đột
-  sendVoltage();
+  //sendVoltage();
   portEXIT_CRITICAL_ISR(&timerMux); // thoát 
 }
 
@@ -437,7 +464,7 @@ void setup() {
   stepper2.setAcceleration(100.0);// gia toc
   stepper2.setSpeed(stepperSpeed);// toc do hien tai
   stepper2.setCurrentPosition(0);
-
+#if 0 /*not use timer anymore*/
   //khoi tạo timer với chu kì 1us vì thạch anh của ESP chạy 8MHz
   timer = timerBegin(0, 80, true);
   //khởi tạo hàm xử lý ngắt ngắt cho Timer
@@ -446,6 +473,7 @@ void setup() {
   timerAlarmWrite(timer, 1000000, true);
   //bắt đầu chạy timer
   timerAlarmEnable(timer);
+#endif
 #endif
 
 }
