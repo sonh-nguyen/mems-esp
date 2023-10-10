@@ -18,7 +18,11 @@
 #define CMD_ADD         3
 #define CMD_EXTRA_ADD   4
 
+<<<<<<< HEAD
 #define VALID_VOLTAGE_ERROR 4 /*V*/
+=======
+#define VALID_VOLTAGE_ERROR 0.5 /*V*/
+>>>>>>> a758894 (edit dev control voltage)
 #define MAX_ATTEMP 5
 #endif
 
@@ -42,11 +46,22 @@ byte moc1, moc2, moc3, moc4, moc5;
 #ifdef HAVE_VOLTAGE_CONTROL 
 #define HALFSTEP 8
 /* for voltage control */
+<<<<<<< HEAD
 float vol1, vol2;
 float targetVoltage1; //gia tri Voltage tra ve cho stepper1
 float curentVoltage1; //gia tri Voltage nhap vao cho stepper1
 float targetVoltage2; //gia tri Voltage tra ve cho stepper2
 float curentVoltage2; //gia tri Voltage nhap vao cho stepper2
+=======
+float targetVoltage1; //gia tri Voltage tra ve cho stepper1
+float curentVoltage1 = 0; //gia tri Voltage nhap vao cho stepper1
+float targetVoltage2; //gia tri Voltage tra ve cho stepper2
+float curentVoltage2 = 0;; //gia tri Voltage nhap vao cho stepper2
+long adc0 = 0;
+long adc1 = 0;
+int attempCount = 0;
+long currPos = 0;
+>>>>>>> a758894 (edit dev control voltage)
 
 // ULN2003 Motor Driver Pins
 #define motorPin1  13     // IN1 on the ULN2003 driver 1
@@ -59,12 +74,11 @@ float curentVoltage2; //gia tri Voltage nhap vao cho stepper2
 #define motorPin7  33   // IN3 on the ULN2003 driver 2
 #define motorPin8  32   // IN4 on the ULN2003 driver 2
 
-#define ADC_VOLTAGE_1 34
-#define ADC_VOLTAGE_2 35
 
+// variables
 const float stepsPerRevolution = 4096;  // change this to fit the number of steps per revolution
 float StepsPerVol = 37.4064  ; // so buoc tren 1 Vol
-int stepperSpeed = 200; //speed of the stepper (steps per second)
+int stepperSpeed = 100; //speed of the stepper (steps per second)
 
 // initialize the ads library
 Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
@@ -372,20 +386,40 @@ void AD5940_EIS_Main(void)
 }
 
 #ifdef HAVE_VOLTAGE_CONTROL 
-float volToSteps1(float voltage1,float voltage2){
-  float a;
-  a = (voltage2 - voltage1*18)*StepsPerVol;
-  return a; 
+void readVoltage(){
+
+  int16_t adc0, adc1;
+  adc0 = ads.readADC_SingleEnded(0);
+  adc1 = ads.readADC_SingleEnded(1);
+  curentVoltage1 = ads.computeVolts(adc0) * 18;  // Nhân với 1 hàm tuyến tính (chưa có công thúc), Tại đây không dùng map vì map trả về kiểu Int (Tự làm tròn)
+  curentVoltage2 = ads.computeVolts(adc1) * 18;
+  
+  Serial.print("AIN0: "); 
+  Serial.print(adc0);
+  Serial.print("\tVoltage1: ");
+  Serial.println(curentVoltage1, 7); 
+  Serial.println();
+
+  Serial.print("AIN1: "); 
+  Serial.print(adc1);
+  Serial.print("\tVoltage2: ");
+  Serial.println(curentVoltage2, 7); 
+  Serial.println();
 }
-float volToSteps2(float voltage3,float voltage4){
-  float b;
-  b = (voltage4 - voltage3*18)*StepsPerVol;
-  return b; 
+
+long volToSteps(float vol1,float vol2){
+  long a;
+  a = (vol2 - vol1)*StepsPerVol;
+  return a;
 }
+
 void VoltageCtrl_Main() {
   float voltage1Error;
   float voltage2Error;
+<<<<<<< HEAD
   int attempCount = 0;
+=======
+>>>>>>> a758894 (edit dev control voltage)
   int isSuccess = 0;
 
   const float targetVoltage1_l = targetVoltage1;
@@ -396,6 +430,7 @@ void VoltageCtrl_Main() {
   
   do {
     if (voltage1Error > VALID_VOLTAGE_ERROR) {
+<<<<<<< HEAD
       stepper1.moveTo(volToSteps1(targetVoltage1_l, curentVoltage1));
       stepper1.run();
     }
@@ -403,6 +438,31 @@ void VoltageCtrl_Main() {
     if (voltage2Error > VALID_VOLTAGE_ERROR) {
       stepper2.moveTo(volToSteps2(targetVoltage2_l,curentVoltage2));
       stepper2.run();
+=======
+     long relative_step = volToSteps(curentVoltage1, targetVoltage1_l);
+      stepper1.move(relative_step);
+      currPos = stepper1.currentPosition();
+      Serial.print(relative_step);
+      Serial.print(" ; ");
+      Serial.print(currPos);
+      stepper1.runToPosition();
+      currPos = stepper1.currentPosition();
+      Serial.print("done: ");
+      Serial.println(currPos);
+    }
+
+    if (voltage2Error > VALID_VOLTAGE_ERROR) {
+      long relative_step = volToSteps(curentVoltage2, targetVoltage2_l);
+      stepper2.move(relative_step);
+      currPos = stepper2.currentPosition();
+      Serial.print(relative_step);
+      Serial.print(" ; ");
+      Serial.print(currPos);
+      stepper2.runToPosition();
+      currPos = stepper2.currentPosition();
+      Serial.print("done: ");
+      Serial.println(currPos);
+>>>>>>> a758894 (edit dev control voltage)
     }
     attempCount++;
     delay(200);
@@ -420,6 +480,7 @@ void VoltageCtrl_Main() {
 }
 #endif
 
+<<<<<<< HEAD
 void readVoltage(){
 
   int16_t adc0, adc1;
@@ -429,6 +490,8 @@ void readVoltage(){
   curentVoltage2 = ads.computeVolts(adc1) * 18;
 }
 
+=======
+>>>>>>> a758894 (edit dev control voltage)
 // hàm xử lý ngắt
 void IRAM_ATTR onTimer() {   
   portENTER_CRITICAL_ISR(&timerMux); //vào chế độ tránh xung đột
