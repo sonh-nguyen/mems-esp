@@ -18,11 +18,7 @@
 #define CMD_ADD         3
 #define CMD_EXTRA_ADD   4
 
-<<<<<<< HEAD
-#define VALID_VOLTAGE_ERROR 4 /*V*/
-=======
-#define VALID_VOLTAGE_ERROR 0.5 /*V*/
->>>>>>> a758894 (edit dev control voltage)
+#define VALID_VOLTAGE_ERROR 1 /*V*/
 #define MAX_ATTEMP 5
 #endif
 
@@ -46,22 +42,10 @@ byte moc1, moc2, moc3, moc4, moc5;
 #ifdef HAVE_VOLTAGE_CONTROL 
 #define HALFSTEP 8
 /* for voltage control */
-<<<<<<< HEAD
-float vol1, vol2;
-float targetVoltage1; //gia tri Voltage tra ve cho stepper1
-float curentVoltage1; //gia tri Voltage nhap vao cho stepper1
-float targetVoltage2; //gia tri Voltage tra ve cho stepper2
-float curentVoltage2; //gia tri Voltage nhap vao cho stepper2
-=======
 float targetVoltage1; //gia tri Voltage tra ve cho stepper1
 float curentVoltage1 = 0; //gia tri Voltage nhap vao cho stepper1
 float targetVoltage2; //gia tri Voltage tra ve cho stepper2
 float curentVoltage2 = 0;; //gia tri Voltage nhap vao cho stepper2
-long adc0 = 0;
-long adc1 = 0;
-int attempCount = 0;
-long currPos = 0;
->>>>>>> a758894 (edit dev control voltage)
 
 // ULN2003 Motor Driver Pins
 #define motorPin1  13     // IN1 on the ULN2003 driver 1
@@ -88,7 +72,7 @@ AccelStepper stepper2(HALFSTEP, motorPin5, motorPin7, motorPin6, motorPin8);
 
 hw_timer_t* timer = NULL; //khơi tạo timer
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED; 
-uint8_t enable_send_volgate = 1;
+
 #endif
 
 static int32_t RampShowResult(float *pData, uint32_t DataCount)
@@ -393,7 +377,8 @@ void readVoltage(){
   adc1 = ads.readADC_SingleEnded(1);
   curentVoltage1 = ads.computeVolts(adc0) * 18;  // Nhân với 1 hàm tuyến tính (chưa có công thúc), Tại đây không dùng map vì map trả về kiểu Int (Tự làm tròn)
   curentVoltage2 = ads.computeVolts(adc1) * 18;
-  
+
+#ifdef DEBUG
   Serial.print("AIN0: "); 
   Serial.print(adc0);
   Serial.print("\tVoltage1: ");
@@ -405,6 +390,7 @@ void readVoltage(){
   Serial.print("\tVoltage2: ");
   Serial.println(curentVoltage2, 7); 
   Serial.println();
+#endif
 }
 
 long volToSteps(float vol1,float vol2){
@@ -414,12 +400,10 @@ long volToSteps(float vol1,float vol2){
 }
 
 void VoltageCtrl_Main() {
+  int attempCount = 0;
+  long currPos = 0;
   float voltage1Error;
   float voltage2Error;
-<<<<<<< HEAD
-  int attempCount = 0;
-=======
->>>>>>> a758894 (edit dev control voltage)
   int isSuccess = 0;
 
   const float targetVoltage1_l = targetVoltage1;
@@ -430,39 +414,39 @@ void VoltageCtrl_Main() {
   
   do {
     if (voltage1Error > VALID_VOLTAGE_ERROR) {
-<<<<<<< HEAD
-      stepper1.moveTo(volToSteps1(targetVoltage1_l, curentVoltage1));
-      stepper1.run();
-    }
-
-    if (voltage2Error > VALID_VOLTAGE_ERROR) {
-      stepper2.moveTo(volToSteps2(targetVoltage2_l,curentVoltage2));
-      stepper2.run();
-=======
      long relative_step = volToSteps(curentVoltage1, targetVoltage1_l);
       stepper1.move(relative_step);
+#ifdef DEBUG
       currPos = stepper1.currentPosition();
+      Serial.print("Stepper1:\trelative step: ");
       Serial.print(relative_step);
-      Serial.print(" ; ");
+      Serial.print("\tpos before: ");
       Serial.print(currPos);
+#endif
       stepper1.runToPosition();
+#ifdef DEBUG
       currPos = stepper1.currentPosition();
-      Serial.print("done: ");
+      Serial.print("\tpos after: ");
       Serial.println(currPos);
+#endif
     }
 
     if (voltage2Error > VALID_VOLTAGE_ERROR) {
       long relative_step = volToSteps(curentVoltage2, targetVoltage2_l);
       stepper2.move(relative_step);
+#ifdef DEBUG
       currPos = stepper2.currentPosition();
+      Serial.print("Stepper2:\trelative step: ");
       Serial.print(relative_step);
-      Serial.print(" ; ");
+      Serial.print("\tpos before: ");
       Serial.print(currPos);
+#endif
       stepper2.runToPosition();
+#ifdef DEBUG
       currPos = stepper2.currentPosition();
-      Serial.print("done: ");
+      Serial.print("\tpos after: ");
       Serial.println(currPos);
->>>>>>> a758894 (edit dev control voltage)
+#endif
     }
     attempCount++;
     delay(200);
@@ -471,6 +455,7 @@ void VoltageCtrl_Main() {
     readVoltage();
     voltage1Error = fabs(targetVoltage1_l - curentVoltage1);
     voltage2Error = fabs(targetVoltage2_l - curentVoltage2);
+
     if (voltage1Error < VALID_VOLTAGE_ERROR && voltage2Error < VALID_VOLTAGE_ERROR) 
       isSuccess = 1;
     /*send result to UI*/
@@ -480,18 +465,6 @@ void VoltageCtrl_Main() {
 }
 #endif
 
-<<<<<<< HEAD
-void readVoltage(){
-
-  int16_t adc0, adc1;
-  adc0 = ads.readADC_SingleEnded(0);    
-  adc1 = ads.readADC_SingleEnded(1);
-  curentVoltage1 = ads.computeVolts(adc0) * 18;  // Nhân với 1 hàm tuyến tính (chưa có công thúc), Tại đây không dùng map vì map trả về kiểu Int (Tự làm tròn)
-  curentVoltage2 = ads.computeVolts(adc1) * 18;
-}
-
-=======
->>>>>>> a758894 (edit dev control voltage)
 // hàm xử lý ngắt
 void IRAM_ATTR onTimer() {   
   portENTER_CRITICAL_ISR(&timerMux); //vào chế độ tránh xung đột
@@ -575,20 +548,17 @@ void loop() {
       
       if (inputString[0] == '1')
       {
-        enable_send_volgate = 0;
         AD5940_CV_Main();
         ESP.restart();
       }
       else if (inputString[0] = '2')
       {
-        enable_send_volgate = 0;
         AD5940_EIS_Main();
         ESP.restart();
       }
 #ifdef HAVE_VOLTAGE_CONTROL
       else if (inputString[0] = '3')
       {
-        enable_send_volgate = 1;
         VoltageCtrl_Main();
       }
 #endif
