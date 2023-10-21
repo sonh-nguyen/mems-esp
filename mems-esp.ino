@@ -6,7 +6,7 @@
 #include <Adafruit_ADS1X15.h>
 
 #define HAVE_VOLTAGE_CONTROL 
-
+//#define DEBUG 1
 #ifdef HAVE_VOLTAGE_CONTROL
 #define VOLTAGE_NONE    0
 #define VOLTAGE_1       1
@@ -40,6 +40,7 @@ byte moc1, moc2, moc3, moc4, moc5;
 
 
 #ifdef HAVE_VOLTAGE_CONTROL 
+#define WAIT_TIME 700 /*ms*/
 #define HALFSTEP 8
 /* for voltage control */
 float targetVoltage1; //gia tri Voltage tra ve cho stepper1
@@ -411,7 +412,11 @@ void VoltageCtrl_Main() {
   readVoltage();
   voltage1Error = fabs(targetVoltage1_l - curentVoltage1);
   voltage2Error = fabs(targetVoltage2_l - curentVoltage2);
-  
+
+#ifdef DEBUG
+  Serial.println("Voltage: " + String(curentVoltage1) + " " + String(curentVoltage2));
+  Serial.println("Error: " + String(voltage1Error) + " " + String(voltage2Error));
+#endif
   do {
     if (voltage1Error > VALID_VOLTAGE_ERROR) {
      long relative_step = volToSteps(curentVoltage1, targetVoltage1_l);
@@ -449,7 +454,7 @@ void VoltageCtrl_Main() {
 #endif
     }
     attempCount++;
-    delay(200);
+    delay(WAIT_TIME);
 
     /*read voltage values after rotate steppers */
     readVoltage();
@@ -515,9 +520,13 @@ void setup() {
 }
 
 void loop() {
+
   while (Serial.available())
   {
     char inChar = (char)Serial.read();
+#ifdef DEBUG
+    Serial.print(inChar);
+#endif
     if (inChar != '!')
     {
       inputString += inChar;
@@ -532,6 +541,10 @@ void loop() {
         if(inputString[i] == '|') {moc4 = i;}
         if(inputString[i] == '$') {moc5 = i;}
       }
+
+#ifdef DEBUG
+      Serial.println("cmd code: " + inputString[0]);
+#endif
       if(inputString[0] == '1' || inputString[0] == '2'){
         S_Vol = inputString.substring((moc1 + 1), moc2).toDouble() * 1.0;
         E_Vol = inputString.substring((moc2 + 1), moc3).toInt() * 1.0;
@@ -543,6 +556,9 @@ void loop() {
       else if(inputString[0] == '3') {
         targetVoltage1  = inputString.substring((moc1 + 1), moc2).toDouble() * 1.0;
         targetVoltage2 = inputString.substring((moc2 + 1), moc3).toDouble() * 1.0;
+#ifdef DEBUG
+        Serial.print("Got cmd control voltage: " + String(targetVoltage1) + " " + String(targetVoltage2));
+#endif
       }
 #endif
       
@@ -551,14 +567,17 @@ void loop() {
         AD5940_CV_Main();
         ESP.restart();
       }
-      else if (inputString[0] = '2')
+      else if (inputString[0] == '2')
       {
         AD5940_EIS_Main();
         ESP.restart();
       }
 #ifdef HAVE_VOLTAGE_CONTROL
-      else if (inputString[0] = '3')
-      {
+      else if (inputString[0] == '3')
+      {VoltageCtrl_Main
+#ifdef DEBUG
+        Serial.println("");
+#endif
         VoltageCtrl_Main();
       }
 #endif
