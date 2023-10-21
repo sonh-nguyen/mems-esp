@@ -6,7 +6,7 @@
 #include <Adafruit_ADS1X15.h>
 
 #define HAVE_VOLTAGE_CONTROL 
-//#define DEBUG 1
+#define DEBUG 1
 #ifdef HAVE_VOLTAGE_CONTROL
 #define VOLTAGE_NONE    0
 #define VOLTAGE_1       1
@@ -18,8 +18,8 @@
 #define CMD_ADD         3
 #define CMD_EXTRA_ADD   4
 
-#define VALID_VOLTAGE_ERROR 1 /*V*/
-#define MAX_ATTEMP 5
+#define VALID_VOLTAGE_ERROR 0.65 /*V*/
+#define MAX_ATTEMP 10
 #endif
 
 unsigned long timeStart = 0;
@@ -40,7 +40,7 @@ byte moc1, moc2, moc3, moc4, moc5;
 
 
 #ifdef HAVE_VOLTAGE_CONTROL 
-#define WAIT_TIME 700 /*ms*/
+#define WAIT_TIME 6000 /*ms*/
 #define HALFSTEP 8
 /* for voltage control */
 float targetVoltage1; //gia tri Voltage tra ve cho stepper1
@@ -63,7 +63,7 @@ float curentVoltage2 = 0;; //gia tri Voltage nhap vao cho stepper2
 // variables
 const float stepsPerRevolution = 4096;  // change this to fit the number of steps per revolution
 float StepsPerVol = 37.4064  ; // so buoc tren 1 Vol
-int stepperSpeed = 100; //speed of the stepper (steps per second)
+int stepperSpeed = 400; //speed of the stepper (steps per second)
 
 // initialize the ads library
 Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
@@ -454,6 +454,7 @@ void VoltageCtrl_Main() {
 #endif
     }
     attempCount++;
+    Serial.println("Wait for 6s");
     delay(WAIT_TIME);
 
     /*read voltage values after rotate steppers */
@@ -497,14 +498,14 @@ void setup() {
 #ifdef HAVE_VOLTAGE_CONTROL
   // set the speed at 15 rpm
   stepper1.setMaxSpeed(1000.0); // toc do max cua dong co
-  stepper1.setAcceleration(100.0);// gia toc
+  stepper1.setAcceleration(250);// gia toc
   stepper1.setSpeed(stepperSpeed);// toc do hien tai
-  stepper1.setCurrentPosition(0);
+
   
   stepper2.setMaxSpeed(1000.0); // toc do max cua dong co
-  stepper2.setAcceleration(100.0);// gia toc
+  stepper2.setAcceleration(250);// gia toc
   stepper2.setSpeed(stepperSpeed);// toc do hien tai
-  stepper2.setCurrentPosition(0);
+
 #if 0 /*not use timer anymore*/
   //khoi tạo timer với chu kì 1us vì thạch anh của ESP chạy 8MHz
   timer = timerBegin(0, 80, true);
@@ -557,7 +558,7 @@ void loop() {
         targetVoltage1  = inputString.substring((moc1 + 1), moc2).toDouble() * 1.0;
         targetVoltage2 = inputString.substring((moc2 + 1), moc3).toDouble() * 1.0;
 #ifdef DEBUG
-        Serial.print("Got cmd control voltage: " + String(targetVoltage1) + " " + String(targetVoltage2));
+        Serial.println("Got cmd control voltage: " + String(targetVoltage1) + " " + String(targetVoltage2));
 #endif
       }
 #endif
@@ -574,9 +575,9 @@ void loop() {
       }
 #ifdef HAVE_VOLTAGE_CONTROL
       else if (inputString[0] == '3')
-      {VoltageCtrl_Main
+      {
 #ifdef DEBUG
-        Serial.println("");
+        Serial.println("VoltageCtrl_Main");
 #endif
         VoltageCtrl_Main();
       }
