@@ -20,7 +20,7 @@
 
 #define VALID_VOLTAGE_ERROR 1 /*V*/
 #define MAX_ATTEMP 5
-#endif
+#endif /*HAVE_VOLTAGE_CONTROL*/
 
 unsigned long timeStart = 0;
 unsigned long timeNow = 0;
@@ -73,7 +73,7 @@ AccelStepper stepper2(HALFSTEP, motorPin5, motorPin7, motorPin6, motorPin8);
 hw_timer_t* timer = NULL; //khơi tạo timer
 portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED; 
 
-#endif
+#endif /*HAVE_VOLTAGE_CONTROL*/
 
 static int32_t RampShowResult(float *pData, uint32_t DataCount)
 {
@@ -551,13 +551,13 @@ void loop() {
         AD5940_CV_Main();
         ESP.restart();
       }
-      else if (inputString[0] = '2')
+      else if (inputString[0] == '2')
       {
         AD5940_EIS_Main();
         ESP.restart();
       }
 #ifdef HAVE_VOLTAGE_CONTROL
-      else if (inputString[0] = '3')
+      else if (inputString[0] == '3')
       {
         VoltageCtrl_Main();
       }
